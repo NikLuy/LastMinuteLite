@@ -14,8 +14,8 @@ public class HotelService(HttpClient http) : IHotelService
     {
         if (date.HasValue)
         {
-            var dateString = date.Value.ToString("yyyy-MM-dd");
-            return await http.GetFromJsonAsync<HotelDealDto>($"/api/deals/random?{dateString}", ct);
+            var dateString = date.Value.ToString("yyyy-MM-ddTHH:mm:ss");
+            return await http.GetFromJsonAsync<HotelDealDto>($"/api/deals/random?date={dateString}", ct);
         }
         return await http.GetFromJsonAsync<HotelDealDto>("/api/deals/random", ct);
     }

@@ -43,7 +43,7 @@ if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.UseHttpsRedirection();
 
 // Program.cs (Hotel API) – Random-Deal mit optionalem ?date=YYYY-MM-DD
-app.MapGet("/api/deals/random", (DateOnly? date) =>
+app.MapGet("/api/deals/random", (DateTime? date) =>
 {
     var hotels = new[] { "Hotel Aurora", "Grand Vista", "Sea Breeze", "Mountain Inn" };
     var cities = new[] { "Zürich", "Genf", "London", "Frankfurt", "Paris", "New York", "Barcelona", "Madrid" };
@@ -52,8 +52,10 @@ app.MapGet("/api/deals/random", (DateOnly? date) =>
     // Wenn date gesetzt: nehme diesen Check-in-Tag (14:00 Uhr UTC),
     // sonst ein zufälliges Datum in den nächsten 30 Tagen.
     var checkInUtc = date.HasValue
-        ? new DateTime(date.Value.Year, date.Value.Month, date.Value.Day, 14, 0, 0, DateTimeKind.Utc)
+        ? date.Value
         : DateTime.UtcNow.AddDays(rnd.Next(1, 30));
+
+    checkInUtc = checkInUtc.AddHours(rnd.Next(1, 8));
 
     var deal = new HotelDealDto(
         Id: Guid.NewGuid(),
