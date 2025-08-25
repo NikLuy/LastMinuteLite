@@ -1,18 +1,19 @@
+using LastMinuteLite.Shared;
 using LastMinuteLite.Web.Components;
 using LastMinuteLite.Web.Data;
+using LastMinuteLite.Web.Entities;
 using LastMinuteLite.Web.Models;
 using LastMinuteLite.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using System;
-using LastMinuteLite.Web.Entities;
-using LastMinuteLite.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.AddServiceDefaults();
 
 builder.Services.AddSerilog(config =>
 {
@@ -50,28 +51,7 @@ builder.Services.AddHttpClient<IHotelService, HotelService>("Hotel",
             http.DefaultRequestHeaders.Add("X-Api-Token", opts.ApiToken);
     });
 
-builder.Services.AddScoped<IComboDealService, ComboDealService>();
-
 var app = builder.Build();
-
-// Minimal API endpoints for combo deals (persisted)
-app.MapPost("/api/combos", async (ComboDealDto dto, AppDbContext db) =>
-{
-    var entity = ComboDeal.FromDto(dto);
-    db.ComboDeals.Add(entity);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/combos/{entity.Id}", entity.Id);
-});
-
-app.MapGet("/api/combos", async (AppDbContext db) =>
-{
-    var list = await db.ComboDeals
-        .OrderByDescending(c => c.CreatedUtc)
-        .Take(50)
-        .Select(c => c.ToDto())
-        .ToListAsync();
-    return Results.Ok(list);
-});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -89,25 +69,3 @@ app.MapRazorComponents<App>()
 
 app.Run();
 
-
-//Funktion f�r Migration & Seeding
-//static void SeedDataIfNeeded(WebApplication app)
-//{
-//    using var scope = app.Services.CreateScope();
-//    var services = scope.ServiceProvider;
-
-//    try
-//    {
-//        var db = services.GetRequiredService<AppDbContext>();
-//        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Seeding");
-
-//        db.Database.Migrate(); // optional: Migration sicherstellen
-//        DbInitializer.Seed(db, logger);
-//    }
-//    catch (Exception ex)
-//    {
-//        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Seeding");
-//        logger.LogError(ex, "Fehler beim Seeding");
-//        throw;
-//    }
-//}

@@ -1,29 +1,46 @@
 // Program.cs (AirPlane API)
+using LastMinuteLite.Shared;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(); // Ensure the required package is installed
 builder.Services.AddOpenApi();
+
+
+builder.AddServiceDefaults();
+
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-// --- sehr einfache Header-Token-Auth ---
-app.Use(async (ctx, next) =>
-{
-    var expected = builder.Configuration["Auth:ApiToken"];
-    if (string.IsNullOrWhiteSpace(expected))
-    {
-        await next(); // kein Token konfiguriert -> offen
-        return;
-    }
+//app.Use(async (ctx, next) =>
+//{
+//    var path = ctx.Request.Path;
 
-    if (!ctx.Request.Headers.TryGetValue("X-Api-Token", out var token) || token != expected)
-    {
-        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        await ctx.Response.WriteAsync("Missing or invalid X-Api-Token");
-        return;
-    }
-    await next();
-});
+//    // allow docs & UI without token
+//    if (path.StartsWithSegments("/openapi") ||
+//        path.StartsWithSegments("/swagger") ||
+//        path.StartsWithSegments("/scalar"))
+//    {
+//        await next();
+//        return;
+//    }
+
+//    var expected = builder.Configuration["Auth:ApiToken"];
+//    if (!string.IsNullOrWhiteSpace(expected))
+//    {
+//        if (!ctx.Request.Headers.TryGetValue("X-Api-Token", out var token) || token != expected)
+//        {
+//            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+//            await ctx.Response.WriteAsync("Missing or invalid X-Api-Token");
+//            return;
+//        }
+//    }
+
+//    await next();
+//});
 
 app.UseHttpsRedirection();
 
@@ -47,6 +64,9 @@ app.MapGet("/api/deals/random", () =>
     return Results.Ok(deal);
 })
 .WithName("GetRandomFlightDeal");
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.Run();
 

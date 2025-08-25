@@ -1,7 +1,6 @@
 ﻿@page "/"
 @inject IAirplaneService Airplanes
 @inject IHotelService Hotels
-@inject IComboDealService Combos
 @inject IJSRuntime Js
 
 <PageTitle>Deals</PageTitle>
@@ -100,7 +99,7 @@
         {
             _recentError = null;
             _recent = null; // trigger loading state
-            _recent = (await Combos.GetRecentAsync()).OrderByDescending(d => d.Flight.DepartureUtc).ToList();
+            await Task.Delay(300);  
         }
         catch (Exception ex)
         {
@@ -135,7 +134,7 @@
                     _loadingPhase = $"Hotels für Flug {index}/{flights.Count} (Variante {i + 1}/{hotelsPerFlight})";
                     StateHasChanged();
                     await Task.Delay(400);
-                    var hotel = await Hotels.GetDealAsync();
+                    var hotel = await Hotels.GetDealAsync(flight.DepartureUtc);
                     if (hotel == null) continue;
                     var total = flight.Price + (hotel.PricePerNight * hotel.Nights);
                     _generated.Add(new ComboDealDto(flight, hotel, total));
@@ -162,7 +161,6 @@
         _isSaving = true;
         try
         {
-            await Combos.SaveAsync(deal);
             await Js.ToastrSucces("Deal gespeichert!");
             await LoadRecentAsync();
         }
@@ -176,26 +174,5 @@
         }
     }
 
-    private async Task SaveAllAsync()
-    {
-        if (_generated.Count == 0) return;
-        _isSaving = true;
-        try
-        {
-            foreach (var g in _generated)
-            {
-                await Combos.SaveAsync(g);
-            }
-            await Js.ToastrSucces($"Alle {_generated.Count} Deals gespeichert!");
-            await LoadRecentAsync();
-        }
-        catch (Exception ex)
-        {
-            await Js.ToastrError("Speichern (Alle) fehlgeschlagen: " + ex.Message);
-        }
-        finally
-        {
-            _isSaving = false;
-        }
-    }
+    
 }
