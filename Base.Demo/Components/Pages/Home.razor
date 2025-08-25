@@ -1,0 +1,28 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+
+<section class="hero text-white rounded-4 shadow-sm position-relative overflow-hidden mb-5 p-4 p-lg-5">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="display-6 fw-bold mb-0">Lokales Wetter – klar und schnell</h1>
+
+        @* <button class="btn-meteo" @onclick="ScrollToDashboard">🏠 Zum Dashboard</button> *@
+        <a class="btn btn-outline-sky" href="/api">⚡ API</a>
+    </div>
+</section>
+
+
+<!-- Map Placeholder -->
+<section class="container" style="margin: 2rem auto;">
+    <h3 style="margin-bottom: 1rem;">Karte</h3>
+    <div class="tile text-center" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+        <div>
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🗺️</div>
+            <div class="muted">Hier kann deine Leaflet/Mapbox Karte rein</div>
+            <div style="margin-top: 1rem;">
+                <a class="btn-outline-sky" href="/map">Vollständige Karte anzeigen</a>
+            </div>
+        </div>
+    </div>
+</section>

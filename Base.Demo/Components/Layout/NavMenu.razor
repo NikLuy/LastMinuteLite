@@ -1,0 +1,55 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Navigation
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-meteo">
+    <div class="container">
+        <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="/">
+            <i class="bi bi-cloud-sun"></i>
+            <span>MeteoMesch</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Menü öffnen">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="mainNav" class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                        <i class="bi bi-house-door me-1"></i>Start
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/stations">
+                        <i class="bi bi-broadcast-pin me-1"></i>Stationen
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/forecast">
+                        <i class="bi bi-cloud-rain me-1"></i>Vorhersage
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/map">
+                        <i class="bi bi-map me-1"></i>Karte
+                    </NavLink>
+                </li>
+            </ul>
+            <div class="d-flex gap-2">
+                <span class="navbar-text small d-none d-lg-inline">
+                    <i class="bi bi-geo-alt me-1"></i>Schwyz
+                </span>
+                <button class="btn btn-meteo btn-sm" @onclick="RefreshData">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Aktualisieren
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private void RefreshData()
+    {
+        // Force page refresh
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+}

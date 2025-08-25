@@ -1,0 +1,201 @@
+﻿@page "/"
+@inject IAirplaneService Airplanes
+@inject IHotelService Hotels
+@inject IComboDealService Combos
+@inject IJSRuntime Js
+
+<PageTitle>Deals</PageTitle>
+
+<section class="hero text-white rounded-4 shadow-sm position-relative overflow-hidden mb-5 p-4 p-lg-5">
+    <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+        <h1 class="display-6 fw-bold mb-0">Last Minute Kombi-Deals</h1>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-meteo" disabled="@_isLoading" @onclick="() => GenerateBatchAsync(10, 3)">Lade Angebote</button>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    @if (_error != null)
+    {
+        <div class="alert alert-danger">Fehler: @_error</div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="tile p-4 text-center mb-4">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <div>@_loadingPhase</div>
+        </div>
+    }
+
+    <div class="mt-4">
+        <h4 class="mb-3">Generierte Deals</h4>
+        @if (_generated.Count == 0 && !_isLoading)
+        {
+            <div class="alert alert-warning mb-0">
+                <button class="btn btn-primary" disabled="@_isLoading" @onclick="() => GenerateBatchAsync(10, 3)">Lade Angebote</button>
+            </div>
+        }
+        else if (_generated.Count > 0)
+        {
+            <div class="row g-4">
+                @foreach (var combo in _generated)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm border-0 deal-card">
+                            <div class="card-header bg-primary-subtle small fw-semibold">
+                                Flug @combo.Flight.From → @combo.Flight.To · @combo.Flight.Airline
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between small"><span>Abflug (UTC)</span><span>@combo.Flight.DepartureUtc</span></div>
+                                    <div class="d-flex justify-content-between small"><span>Sitze frei</span><span>@combo.Flight.SeatsLeft</span></div>
+                                    <div class="d-flex justify-content-between small"><span>Flugpreis</span><span>@combo.Flight.Price.ToString("C")</span></div>
+                                </div>
+                                <hr class="my-2" />
+                                <div class="mb-2">
+                                    <div class="fw-semibold small">Hotel: @combo.Hotel.HotelName (@combo.Hotel.Stars★)</div>
+                                    <div class="d-flex justify-content-between small"><span>Ort</span><span>@combo.Hotel.City</span></div>
+                                    <div class="d-flex justify-content-between small"><span>Check-In (UTC)</span><span>@combo.Hotel.CheckInUtc</span></div>
+                                    <div class="d-flex justify-content-between small"><span>Nächte</span><span>@combo.Hotel.Nights</span></div>
+                                    <div class="d-flex justify-content-between small"><span>Hotelpreis/Nacht</span><span>@combo.Hotel.PricePerNight.ToString("C")</span></div>
+                                </div>
+                                <div class="mt-auto pt-2 d-flex justify-content-between align-items-end">
+                                    <div class="fw-bold text-end">Total<br /><span class="fs-6">@combo.Total.ToString("C")</span></div>
+                                    <button class="btn btn-sm btn-outline-success" disabled="@_isSaving" @onclick="() => SaveAsync(combo)">💾 Speichern</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _isLoading;
+    private bool _isSaving;
+    private string _loadingPhase = "";
+    private string? _error;
+    private List<ComboDealDto>? _recent;
+    private string? _recentError;
+
+    private readonly List<ComboDealDto> _generated = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentAsync();
+    }
+
+    private void ClearGenerated()
+    {
+        _generated.Clear();
+    }
+
+    private async Task LoadRecentAsync()
+    {
+        try
+        {
+            _recentError = null;
+            _recent = null; // trigger loading state
+            _recent = (await Combos.GetRecentAsync()).OrderByDescending(d => d.Flight.DepartureUtc).ToList();
+        }
+        catch (Exception ex)
+        {
+            _recentError = ex.Message;
+        }
+    }
+
+    private async Task GenerateBatchAsync(int flightCount, int hotelsPerFlight)
+    {
+        if (_isLoading) return;
+        _error = null;
+        _isLoading = true;
+        _generated.Clear();
+        try
+        {
+            _loadingPhase = $"Lade {flightCount} Flüge…";
+            StateHasChanged();
+
+            await Task.Delay(900);
+
+            // Flights parallel
+            var flightTasks = Enumerable.Range(0, flightCount).Select(_ => Airplanes.GetDealAsync()).ToArray();
+            await Task.WhenAll(flightTasks);
+            var flights = flightTasks.Select(t => t.Result).Where(f => f != null)!.Cast<FlightDealDto>().ToList();
+
+            int index = 0;
+            foreach (var flight in flights)
+            {
+                index++;
+                for (int i = 0; i < hotelsPerFlight; i++)
+                {
+                    _loadingPhase = $"Hotels für Flug {index}/{flights.Count} (Variante {i + 1}/{hotelsPerFlight})";
+                    StateHasChanged();
+                    await Task.Delay(400);
+                    var hotel = await Hotels.GetDealAsync();
+                    if (hotel == null) continue;
+                    var total = flight.Price + (hotel.PricePerNight * hotel.Nights);
+                    _generated.Add(new ComboDealDto(flight, hotel, total));
+                }
+            }
+
+            // Sort newest departure first
+            _generated.Sort((a,b) => b.Flight.DepartureUtc.CompareTo(a.Flight.DepartureUtc));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await Js.ToastrError("Fehler beim Batch-Laden: " + ex.Message);
+        }
+        finally
+        {
+            _isLoading = false;
+            _loadingPhase = string.Empty;
+        }
+    }
+
+    private async Task SaveAsync(ComboDealDto deal)
+    {
+        _isSaving = true;
+        try
+        {
+            await Combos.SaveAsync(deal);
+            await Js.ToastrSucces("Deal gespeichert!");
+            await LoadRecentAsync();
+        }
+        catch (Exception ex)
+        {
+            await Js.ToastrError("Speichern fehlgeschlagen: " + ex.Message);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveAllAsync()
+    {
+        if (_generated.Count == 0) return;
+        _isSaving = true;
+        try
+        {
+            foreach (var g in _generated)
+            {
+                await Combos.SaveAsync(g);
+            }
+            await Js.ToastrSucces($"Alle {_generated.Count} Deals gespeichert!");
+            await LoadRecentAsync();
+        }
+        catch (Exception ex)
+        {
+            await Js.ToastrError("Speichern (Alle) fehlgeschlagen: " + ex.Message);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}
